@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="barrage">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>barrage — load testing that finds the bottleneck</title>
+<meta name="description" content="Barrage is an open-source CLI that load tests HTTP, databases, and Redis on the same clock, correlates latency spikes across layers, and fails CI when a P99 budget is exceeded. One static Go binary — no cloud, no account.">
+<meta name="author" content="codetesla51">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://codetesla51.github.io/barrage-landing/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="barrage">
+<meta property="og:title" content="barrage — load testing that finds the bottleneck">
+<meta property="og:description" content="Load test HTTP, databases, and Redis on the same clock. See what breaks, what's slow, and where the bottleneck actually is.">
+<meta property="og:url" content="https://codetesla51.github.io/barrage-landing/">
+<meta property="og:image" content="https://codetesla51.github.io/barrage-landing/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Will your system hold up? barrage load tests HTTP, DB and Redis on one shared clock.">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="barrage — load testing that finds the bottleneck">
+<meta name="twitter:description" content="Load test HTTP, databases, and Redis on the same clock. See what breaks, what's slow, and where the bottleneck actually is.">
+<meta name="twitter:image" content="https://codetesla51.github.io/barrage-landing/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Barrage",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Linux, macOS, Windows",
+  "description": "Open-source CLI that load tests HTTP, databases, and Redis on one shared clock, correlates latency spikes across layers, and gates CI on P99 regressions.",
+  "url": "https://codetesla51.github.io/barrage-landing/",
+  "codeRepository": "https://github.com/codetesla51/barrage",
+  "author": { "@type": "Person", "name": "codetesla51" },
+  "license": "https://github.com/codetesla51/barrage/blob/main/LICENSE",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "programmingLanguage": "Go"
+}
+</script>
+
+<!-- perf: warm up the CDNs early -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://api.github.com">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230d0d0d'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' font-weight='bold' fill='%23e8a33d' text-anchor='middle'%3Eb_%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230d0d0d'/%3E%3Ctext x='8' y='12' font-family='monospace' font-size='11' font-weight='bold' fill='%23e8a33d' text-anchor='middle'%3Eb_%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/geist-mono/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5/daisyui.css" rel="stylesheet" type="text/css" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-base-100 text-base-content">
+
+<a class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:btn focus:btn-sm focus:bg-neutral focus:text-neutral-content" href="#main">Skip to content</a>
+
+<!-- ============ NAV ============ -->
+<header class="fixed top-0 inset-x-0 z-50 border-b border-base-300 bg-base-100/85 backdrop-blur-md">
+  <div class="mx-auto max-w-6xl px-5 sm:px-6">
+    <div class="h-16 flex items-center justify-between gap-3">
+      <a href="#" class="font-mono font-bold text-lg tracking-tight shrink-0 leading-none" aria-label="barrage home">barrage<span class="cursor">_</span></a>
+
+      <!-- center links: perfectly aligned, same control height -->
+      <nav class="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2" aria-label="Main" id="desk-nav">
+        <a class="nav-link" href="#how">How it works</a>
+        <a class="nav-link" href="#scenarios">Scenarios</a>
+        <a class="nav-link" href="#regression">CI gate</a>
+        <a class="nav-link" href="#scope">Scope</a>
+      </nav>
+
+      <!-- right cluster -->
+      <div class="flex items-center gap-2 shrink-0">
+        <a class="btn btn-sm h-9 min-h-0 gap-1.5 border-base-300 bg-base-100 font-normal hover:border-base-content/30"
+           href="https://github.com/codetesla51/barrage" rel="noopener" aria-label="Barrage on GitHub">
+          <i class="ph ph-github-logo text-lg leading-none" aria-hidden="true"></i>
+          <span class="font-mono text-xs tabular-nums inline-flex items-center gap-1" id="gh-stars" title="GitHub stars">
+            <i class="ph ph-star text-[13px] leading-none" aria-hidden="true"></i><span class="stars-n">…</span>
+          </span>
+        </a>
+        <button id="nav-toggle" class="btn btn-sm h-9 min-h-0 md:hidden border-base-300 bg-base-100 px-2.5" aria-expanded="false" aria-controls="mobile-menu" aria-label="Menu">
+          <i class="ph ph-list text-xl leading-none" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- mobile menu -->
+  <nav id="mobile-menu" hidden class="md:hidden border-t border-base-300 bg-base-100/95 backdrop-blur-md px-5 py-3" aria-label="Mobile">
+    <a class="m-link" href="#how"><i class="ph ph-clock-countdown" aria-hidden="true"></i>How it works</a>
+    <a class="m-link" href="#scenarios"><i class="ph ph-path" aria-hidden="true"></i>Scenarios</a>
+    <a class="m-link" href="#regression"><i class="ph ph-git-diff" aria-hidden="true"></i>CI gate</a>
+    <a class="m-link" href="#scope"><i class="ph ph-frame-corners" aria-hidden="true"></i>Scope</a>
+  </nav>
+</header>
+
+<!-- offset for fixed nav -->
+<div class="h-16"></div>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="relative overflow-hidden max-w-6xl mx-auto px-5 sm:px-6 pt-20 lg:pt-32 pb-24 lg:pb-32">
+    <span class="watermark" aria-hidden="true">BARRAGE</span>
+    <div class="max-w-3xl mx-auto text-center reveal relative">
+      <p class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-200/60 px-3.5 py-1.5 font-mono text-xs tracking-wide text-base-content/60 mb-9">
+        <i class="ph ph-terminal-window text-accent" aria-hidden="true"></i> open-source CLI · load testing &amp; performance investigation
+      </p>
+      <h1 class="text-[3rem] leading-[1] sm:text-7xl lg:text-[5.25rem] font-bold tracking-tight">
+        Will your system<br>hold&nbsp;up?
+      </h1>
+      <p class="mt-7 text-lg sm:text-xl leading-relaxed text-base-content/60 max-w-xl mx-auto">
+        Barrage load tests HTTP, databases, and Redis on the same clock so you can see
+        what breaks, what's slow, and where the bottleneck actually is —
+        not just <em>that</em> something got slow.
+      </p>
+      <div class="mt-9 flex flex-wrap justify-center gap-3">
+        <a class="btn btn-neutral btn-lg h-12 min-h-0 px-7" href="#sim">See it run<i class="ph ph-arrow-down text-lg" aria-hidden="true"></i></a>
+        <a class="btn btn-outline btn-lg h-12 min-h-0 px-7 border-base-content/25 hover:border-base-content" href="https://github.com/codetesla51/barrage" rel="noopener">
+          <i class="ph ph-github-logo text-lg" aria-hidden="true"></i>View on GitHub
+        </a>
+      </div>
+      <div class="term max-w-xl mx-auto text-left mt-12">
+        <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">sh</span></div>
+<pre><code><span class="c">$</span> go install github.com/codetesla51/barrage/cmd/barrage@latest</code></pre>
+      </div>
+      <ul class="mt-7 flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-base-content/60">
+        <li class="flex items-center gap-2"><i class="ph ph-cube text-lg text-base-content/70" aria-hidden="true"></i>One static binary</li>
+        <li class="flex items-center gap-2"><i class="ph ph-terminal-window text-lg text-base-content/70" aria-hidden="true"></i>Runs in your terminal</li>
+        <li class="flex items-center gap-2"><i class="ph ph-cloud-slash text-lg text-base-content/70" aria-hidden="true"></i>No cloud, no account</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ LIVE RUN SIMULATOR ============ -->
+  <section id="sim" aria-label="Simulated barrage run" class="border-b border-base-300 pb-16 lg:pb-20">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6 grid grid-cols-1 lg:grid-cols-[9fr_7fr] gap-10 items-center reveal">
+      <figure class="term term-sim m-0" id="sim-box">
+        <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">barrage run — simulated</span></div>
+<pre><code id="sim-code"></code></pre>
+      </figure>
+      <div>
+        <p class="eyebrow"><i class="ph ph-play-circle" aria-hidden="true"></i>See it run</p>
+        <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mt-3 leading-tight">Watch three layers<br>take fire on one clock</h2>
+        <p class="mt-4 text-[15px] leading-relaxed text-base-content/60">
+          HTTP, DB, and Redis requests stream side by side. When a storage runner's P99
+          crosses its threshold in a bucket where HTTP stayed quiet, Barrage flags it
+          <span class="font-mono text-accent font-bold">▲ db-only</span> — a masked spike.
+        </p>
+        <p class="mt-3 text-[13px] text-base-content/40">Simulation for illustration; the output above shows real runs.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REAL OUTPUT + REAL REPORT ============ -->
+  <section class="border-y border-base-300 bg-base-200 py-20 lg:py-28" aria-label="Real terminal output and report">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6 grid grid-cols-1 lg:grid-cols-[8fr_12fr] gap-10 xl:gap-14 items-start">
+
+      <figure class="m-0 reveal">
+        <div class="term">
+          <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">barrage run -c config.yaml</span></div>
+<pre><code>$ barrage run -c config.yaml
+
+barrage v0.3.5
+<span class="dim">duration 15s · bucket 1s · concurrency 10 · ramp 3s</span>
+<span class="dim">rates    http 10/s · db 5/s · redis 20/s</span>
+
+RUNNER  REQUESTS  SUCCESS  RATE    MEAN     P50      P95      P99      MAX
+http    135       100.0%   9.5/s   927µs    509µs    2.5ms    4.4ms    6.6ms
+db      67        100.0%   4.5/s   12.9ms   5.5ms    69.0ms   <b>136.2ms</b>  136.2ms
+redis   269       100.0%   17.9/s  797µs    396µs    2.3ms    3.5ms    10.6ms
+
+correlated spikes
+TIME      RUNNER  HTTP_P99  STORAGE_P99   NOTE
+20:52:22  db      &lt;100ms    136.2ms       <b>db-only</b></code></pre>
+        </div>
+        <figcaption class="px-1 pt-4 text-sm leading-relaxed text-base-content/60">
+          DB P99 spiked past its threshold while HTTP stayed under budget — a storage bottleneck the API hasn't absorbed yet.
+        </figcaption>
+      </figure>
+
+      <figure class="m-0 card bg-base-100 border border-base-300 overflow-hidden reveal" data-delay="1">
+        <img src="todo-api-run-2.png"
+             alt="Barrage HTML report: latency timeline with HTTP, Postgres and Redis P99 plotted on one shared time axis"
+             loading="lazy" class="w-full block h-auto">
+        <figcaption class="px-5 py-4 text-sm leading-relaxed text-base-content/60 border-t border-base-300">
+          One timeline, three layers. From a real 3-minute run against Gin&nbsp;+&nbsp;Postgres&nbsp;+&nbsp;Redis.
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ============ THE CORE IDEA ============ -->
+  <section id="how" class="section-shell">
+    <div class="section-head reveal">
+      <p class="eyebrow"><i class="ph ph-clock-countdown" aria-hidden="true"></i>The core idea</p>
+      <h2>Most tools tell you it got slow.<br>Barrage helps you find out why.</h2>
+      <p class="lede">
+        A typical load tester reports one latency curve for your endpoint. When it degrades,
+        you're left guessing: app? database? cache? Barrage drives all three layers in one
+        process and records every layer's latencies into the same time buckets — so they can
+        be compared directly.
+      </p>
+    </div>
+
+    <!-- signature element: one clock, three layers -->
+    <figure class="clock-diagram mt-14 max-w-3xl mx-auto m-0" role="img" aria-label="Diagram: HTTP, DB and Redis workloads measured against one shared timeline of one-second buckets. Bucket four shows a correlated spike, bucket seven a masked storage spike.">
+      <div class="clock-layers">
+        <div class="layer">
+          <span class="font-mono font-bold text-sm">HTTP</span>
+          <span class="text-sm text-base-content/55 leading-snug">API traffic at a fixed rate</span>
+        </div>
+        <div class="layer">
+          <span class="font-mono font-bold text-sm">DB</span>
+          <span class="text-sm text-base-content/55 leading-snug">weighted read/write queries</span>
+        </div>
+        <div class="layer">
+          <span class="font-mono font-bold text-sm">Redis</span>
+          <span class="text-sm text-base-content/55 leading-snug">commands at their own pace</span>
+        </div>
+      </div>
+      <div class="border-t border-base-300 bg-white/[.02] px-6 pt-4 pb-5">
+        <div class="font-mono text-[11px] uppercase tracking-[0.09em] text-base-content/45 mb-2.5 flex items-center gap-2">
+          <i class="ph ph-clock text-sm" aria-hidden="true"></i> one shared clock · 1s buckets
+        </div>
+        <div class="ticks" aria-hidden="true">
+          <i></i><i></i><i></i><i class="hit"></i><i></i><i></i><i class="masked"></i><i></i><i></i><i></i>
+        </div>
+        <div class="flex flex-wrap justify-between gap-x-6 mt-3 text-xs font-mono text-base-content/55">
+          <span><i class="ph ph-arrows-in-line-horizontal mr-1" aria-hidden="true"></i>correlated — HTTP + DB spiked together</span>
+          <span>masked — DB spiked alone</span>
+        </div>
+      </div>
+    </figure>
+
+    <p class="mt-7 text-sm text-base-content/45 max-w-2xl">
+      Same bucket size, same unix timestamps, same run. That alignment is what makes everything
+      else — correlation, verdicts, regression diffs — possible.
+    </p>
+  </section>
+
+  <!-- ============ FIND THE BOTTLENECK ============ -->
+  <section id="bottleneck" class="section-shell section-alt">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6">
+      <div class="section-head reveal">
+        <p class="eyebrow"><i class="ph ph-crosshair" aria-hidden="true"></i>Diagnosis</p>
+        <h2>Where does it break?</h2>
+        <p class="lede">
+          Every second of a run, Barrage checks each storage layer's P99 against its threshold
+          and reads the result against what HTTP was doing at the same moment:
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-7 lg:gap-9 mt-14">
+        <div class="card bg-base-100 border border-base-300 hover:border-base-content/25 transition-colors reveal">
+          <div class="card-body p-7 lg:p-8 gap-5">
+            <h3 class="card-title text-base justify-start gap-2.5">
+              <i class="ph ph-link-break text-xl text-accent" aria-hidden="true"></i>Correlated spike
+            </h3>
+            <p class="text-[15px] text-base-content/60 leading-relaxed m-0">
+              The database spiked <strong class="text-base-content">and</strong> HTTP crossed its budget in the same bucket.
+              The latency jumped together — the bottleneck backs up into your users.
+            </p>
+            <pre class="mini-term"><code>TIME      RUNNER  HTTP_P99  STORAGE_P99  VERDICT
+20:52:31  db      142ms     <b>890ms</b>        DB → HTTP</code></pre>
+          </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 hover:border-base-content/25 transition-colors reveal" data-delay="1">
+          <div class="card-body p-7 lg:p-8 gap-5">
+            <h3 class="card-title text-base justify-start gap-2.5">
+              <i class="ph ph-eye-slash text-xl text-base-content/60" aria-hidden="true"></i>Masked spike
+            </h3>
+            <p class="text-[15px] text-base-content/60 leading-relaxed m-0">
+              The database spiked but HTTP stayed under budget. The bottleneck is real,
+              just not visible to users yet. Most tools never show you this.
+            </p>
+            <pre class="mini-term"><code>TIME      RUNNER  HTTP_P99  STORAGE_P99  NOTE
+20:52:22  db      &lt;100ms    <b>136.2ms</b>      db-only</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <ul class="mt-14 max-w-3xl divide-y divide-base-300 border-t border-b border-base-300">
+        <li class="py-5 text-[15px] leading-relaxed text-base-content/70 flex gap-4 items-start reveal">
+          <i class="ph ph-desktop text-xl translate-y-0.5 shrink-0 text-base-content/70" aria-hidden="true"></i>
+          <span><strong class="text-base-content font-semibold">Application slow?</strong>
+          An endpoint that's slow while DB and Redis stay idle is an application problem — Barrage leaves those buckets unflagged.</span>
+        </li>
+        <li class="py-5 text-[15px] leading-relaxed text-base-content/70 flex gap-4 items-start reveal">
+          <i class="ph ph-database text-xl translate-y-0.5 shrink-0 text-base-content/70" aria-hidden="true"></i>
+          <span><strong class="text-base-content font-semibold">Database slow?</strong>
+          Weighted read/write query mixes against <strong class="text-base-content">Postgres, MySQL, or SQLite</strong> expose missing indexes, pool limits, and bad plans.</span>
+        </li>
+        <li class="py-5 text-[15px] leading-relaxed text-base-content/70 flex gap-4 items-start reveal">
+          <i class="ph ph-lightning text-xl translate-y-0.5 shrink-0 text-base-content/70" aria-hidden="true"></i>
+          <span><strong class="text-base-content font-semibold">Cache slow?</strong>
+          Redis runs as a first-class runner, not an afterthought.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ SCENARIOS ============ -->
+  <section id="scenarios" class="section-shell">
+    <div class="section-head reveal">
+      <p class="eyebrow"><i class="ph ph-path" aria-hidden="true"></i>Scenario mode</p>
+      <h2>Not just one endpoint, hit harder</h2>
+      <p class="lede">
+        Real users don't GET a single URL in a loop. Scenario mode models sequential journeys:
+        each virtual user logs in, carries the token forward, browses, checks out — looping until
+        the run ends.
+      </p>
+    </div>
+
+    <div class="mt-16 reveal">
+      <div class="journey" role="img" aria-label="A sequential journey per virtual user: POST /login, extract token, GET /me, GET /products, GET /checkout, looping until the run ends">
+        <span class="jnode"><b class="jmethod post">POST</b>/login</span>
+        <i class="ph ph-arrow-right jarr" aria-hidden="true"></i>
+        <span class="jnode jextract"><i class="ph ph-brackets-curly text-accent" aria-hidden="true"></i>extract&nbsp;<b>$.token</b></span>
+        <i class="ph ph-arrow-right jarr" aria-hidden="true"></i>
+        <span class="jnode"><b class="jmethod get">GET</b>/me</span>
+        <i class="ph ph-arrow-right jarr" aria-hidden="true"></i>
+        <span class="jnode"><b class="jmethod get">GET</b>/products</span>
+        <i class="ph ph-arrow-right jarr" aria-hidden="true"></i>
+        <span class="jnode"><b class="jmethod get">GET</b>/checkout</span>
+      </div>
+      <p class="mt-3 text-xs font-mono text-base-content/40 flex items-center gap-2">
+        <i class="ph ph-arrows-clockwise text-sm" aria-hidden="true"></i>per virtual user · loops until the run ends
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-20 mt-14 items-start">
+      <figure class="term m-0 reveal">
+        <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">config.scenario.yaml</span></div>
+<pre><code>scenarios:
+  - name: login-flow
+    weight: 1
+    steps:
+      - method: POST
+        url: http://localhost:8080/api/login
+        body: '{"user":"alice"}'
+        extract:
+          token: $.token
+      - method: GET
+        url: http://localhost:8080/api/me
+        headers:
+          Authorization: Bearer {{token}}
+      - method: GET
+        url: http://localhost:8080/api/checkout?token={{token}}</code></pre>
+      </figure>
+      <div class="space-y-8 lg:pt-2 reveal" data-delay="1">
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-chart-pie-slice" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>Traffic shaped by weights</strong>
+            <span>Each virtual user picks its scenario once at launch, weighted. 70% browsing / 30% checkout means exactly that — not "roughly".</span>
+          </div>
+        </div>
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-user-circle" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>State that belongs to each VU</strong>
+            <span><code>extract</code> pulls <code>$.token</code> or <code>$.user.id</code> out of a response and stores it on that virtual user alone.</span>
+          </div>
+        </div>
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-brackets-curly" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>Carry values forward</strong>
+            <span><code>{{var}}</code> resolves in later URLs, bodies, and headers. A variable that never resolved stays visible as <code>{{var}}</code> — misconfigurations can't hide.</span>
+          </div>
+        </div>
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-clock-countdown" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>Journeys land on the same clock</strong>
+            <span>Scenario buckets share timestamps with DB and Redis, so a slow checkout correlates against your database out of the box.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REALISTIC LOAD ============ -->
+  <section id="load" class="section-shell section-alt">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6">
+      <div class="section-head reveal">
+        <p class="eyebrow"><i class="ph ph-waveform" aria-hidden="true"></i>Realistic load</p>
+        <h2>Load that looks like usage, not like a benchmark</h2>
+        <p class="lede">
+          Don't just hit your endpoint harder. Reproduce how the system is actually used:
+        </p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-base-300 border border-base-300 rounded-box overflow-hidden mt-14">
+        <div class="bg-base-100 p-7 lg:p-8 hover:bg-base-200 transition-colors reveal">
+          <i class="ph ph-chart-line-up text-2xl text-base-content/70" aria-hidden="true"></i>
+          <h3 class="font-semibold mt-4 text-[15px]">Rates that ramp</h3>
+          <p class="text-sm text-base-content/60 mt-2.5 leading-relaxed">Rates grow linearly from zero over a configurable window, instead of full force from the first request.</p>
+        </div>
+        <div class="bg-base-100 p-7 lg:p-8 hover:bg-base-200 transition-colors reveal" data-delay="1">
+          <i class="ph ph-chart-pie text-2xl text-base-content/70" aria-hidden="true"></i>
+          <h3 class="font-semibold mt-4 text-[15px]">Mixes, not loops</h3>
+          <p class="text-sm text-base-content/60 mt-2.5 leading-relaxed">One query is picked per request from a weighted list, so 80% reads / 20% writes means exactly that.</p>
+        </div>
+        <div class="bg-base-100 p-7 lg:p-8 hover:bg-base-200 transition-colors reveal" data-delay="2">
+          <i class="ph ph-git-fork text-2xl text-base-content/70" aria-hidden="true"></i>
+          <h3 class="font-semibold mt-4 text-[15px]">Read/write routing</h3>
+          <p class="text-sm text-base-content/60 mt-2.5 leading-relaxed">Each DB query declares <code>read</code> or <code>write</code>; routing is authoritative, not guessed from SQL text.</p>
+        </div>
+        <div class="bg-base-100 p-7 lg:p-8 hover:bg-base-200 transition-colors reveal" data-delay="3">
+          <i class="ph ph-cpu text-2xl text-base-content/70" aria-hidden="true"></i>
+          <h3 class="font-semibold mt-4 text-[15px]">Real parallelism</h3>
+          <p class="text-sm text-base-content/60 mt-2.5 leading-relaxed">Requests go through worker pools bounded by <code>concurrency</code>. If the target can't keep up, throughput settles below target — on purpose.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ REGRESSION TESTING ============ -->
+  <section id="regression" class="section-shell">
+    <div class="section-head reveal">
+      <p class="eyebrow"><i class="ph ph-git-diff" aria-hidden="true"></i>Regression testing</p>
+      <h2>A regression gate, not just a load test</h2>
+      <p class="lede">
+        Run a baseline, change code or infrastructure, run again — then diff the two JSON exports.
+        A runner is flagged when its current P99 crosses the latency budget while its baseline was under it.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[11fr_9fr] gap-12 xl:gap-20 mt-14 items-start">
+      <figure class="term m-0 reveal">
+        <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">CI</span></div>
+<pre><code>$ barrage compare --baseline base.json --current new.json --fail-on 100ms
+
+comparing base.json -&gt; new.json (fail-on 100ms)
+RUNNER  BASELINE_P99  CURRENT_P99  CHANGE  VERDICT
+DB      80ms          100ms        +25%    ok
+HTTP    30ms          70ms         +133%   REGRESSION
+Redis   20ms          22ms         +10%    ok
+
+error: regression detected against --fail-on budget
+$ echo $?
+1</code></pre>
+      </figure>
+      <div class="space-y-8 lg:pt-2 reveal" data-delay="1">
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-flag-checkered" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>Crossings only, not noise</strong>
+            <span>A runner is flagged when it crosses the budget from below. Already-slow runners aren't re-flagged every run.</span>
+          </div>
+        </div>
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-git-diff" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>Spikes are diffed too</strong>
+            <span>Every correlated spike is matched across the two runs and classified: new, fixed, worsened, or improved.</span>
+          </div>
+        </div>
+        <div class="fact">
+          <span class="fact-icon"><i class="ph ph-plugs-connected" aria-hidden="true"></i></span>
+          <div class="fact-body">
+            <strong>The exit code is the gate</strong>
+            <span>Any regression exits non-zero, so the pipeline fails before the regression ships:</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <figure class="term m-0 mt-10 max-w-2xl reveal">
+      <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">.github/workflows/perf.yml</span></div>
+<pre><code>- name: perf regression gate
+  run: |
+    barrage run --no-report --json current.json
+    barrage compare --baseline base.json --current current.json --fail-on 100ms</code></pre>
+    </figure>
+  </section>
+
+  <!-- ============ WEB UI ============ -->
+  <section id="webui" class="section-shell section-alt">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6">
+      <div class="section-head reveal">
+        <p class="eyebrow"><i class="ph ph-browser" aria-hidden="true"></i>Web UI</p>
+        <h2>Prefer a browser? Barrage ships one.</h2>
+        <p class="lede">
+          <code>barrage web</code> starts a local web UI on <code>localhost:7676</code>:
+          build configs with forms instead of YAML, edit and preview config files,
+          launch runs, and read the story-style report — all without leaving the browser.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-[8fr_6fr] gap-12 xl:gap-20 mt-14 items-start">
+        <div class="mockup-browser border-base-300 bg-base-100 shadow-sm reveal ring-1 ring-white/15">
+          <div class="mockup-browser-toolbar"><div class="input border border-base-300 text-sm">localhost:7676</div></div>
+          <img src="webui-shot.png"
+               alt="Barrage web UI running locally on localhost:7676: config builder with YAML preview"
+               loading="lazy" class="w-full block border-t border-white/10">
+        </div>
+        <div class="space-y-8 lg:pt-2 reveal" data-delay="1">
+          <div class="fact">
+            <span class="fact-icon"><i class="ph ph-sliders-horizontal" aria-hidden="true"></i></span>
+            <div class="fact-body">
+              <strong>Build configs without YAML</strong>
+              <span>HTTP targets, weighted query mixes, Redis workloads, and multi-scenario journeys — all through plain forms with live YAML preview.</span>
+            </div>
+          </div>
+          <div class="fact">
+            <span class="fact-icon"><i class="ph ph-pulse" aria-hidden="true"></i></span>
+            <div class="fact-body">
+              <strong>Launch runs, read stories</strong>
+              <span>Start a run from the browser and read the report as a narrative — spikes explained in plain language, not just plotted.</span>
+            </div>
+          </div>
+          <div class="fact">
+            <span class="fact-icon"><i class="ph ph-package" aria-hidden="true"></i></span>
+            <div class="fact-body">
+              <strong>Served by the same binary</strong>
+              <span>No extra deployment, no daemon, no database of its own. One command turns the CLI into a local web app.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCOPE ============ -->
+  <section id="scope" class="section-shell section-alt">
+    <div class="max-w-6xl mx-auto px-5 sm:px-6 grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-14 lg:gap-20">
+      <div class="reveal">
+        <p class="eyebrow"><i class="ph ph-frame-corners" aria-hidden="true"></i>Scope</p>
+        <h2>Focused on purpose</h2>
+        <p class="mt-5 text-lg text-base-content/60 leading-relaxed">Barrage doesn't try to be everything. It does one job well:</p>
+        <div class="mt-8 border-l-2 border-accent pl-6 space-y-4">
+          <p class="text-xl sm:text-2xl font-semibold tracking-tight m-0">Load test the system you own.</p>
+          <p class="text-xl sm:text-2xl font-semibold tracking-tight m-0">Find the bottleneck.</p>
+          <p class="text-xl sm:text-2xl font-semibold tracking-tight m-0">Understand the result.</p>
+        </div>
+        <p class="mt-7 text-sm font-mono text-base-content/40">narrow on purpose — that's the point</p>
+      </div>
+      <div class="reveal" data-delay="1">
+        <h3 class="list-label">What it is</h3>
+        <ul class="divide-y divide-white/5">
+          <li class="py-3.5 text-[15px] text-base-content/75 flex gap-4 items-center"><span class="chip chip-yes"><i class="ph ph-check" aria-hidden="true"></i></span>One Go binary, entirely CLI-driven</li>
+          <li class="py-3.5 text-[15px] text-base-content/75 flex gap-4 items-center"><span class="chip chip-yes"><i class="ph ph-check" aria-hidden="true"></i></span>Postgres, MySQL, and SQLite built in — any database/sql driver can be linked</li>
+          <li class="py-3.5 text-[15px] text-base-content/75 flex gap-4 items-center"><span class="chip chip-yes"><i class="ph ph-check" aria-hidden="true"></i></span>Spike correlation with bottleneck verdicts</li>
+          <li class="py-3.5 text-[15px] text-base-content/75 flex gap-4 items-center"><span class="chip chip-yes"><i class="ph ph-check" aria-hidden="true"></i></span>Sequential user-journey scenarios</li>
+          <li class="py-3.5 text-[15px] text-base-content/75 flex gap-4 items-center"><span class="chip chip-yes"><i class="ph ph-check" aria-hidden="true"></i></span>Self-contained HTML reports, JSON exports, CI gating</li>
+        </ul>
+        <h3 class="list-label mt-10">What it isn't</h3>
+        <ul class="divide-y divide-white/5">
+          <li class="py-3.5 text-[15px] text-base-content/50 flex gap-4 items-center"><span class="chip chip-no"><i class="ph ph-x" aria-hidden="true"></i></span>A browser or E2E testing framework</li>
+          <li class="py-3.5 text-[15px] text-base-content/50 flex gap-4 items-center"><span class="chip chip-no"><i class="ph ph-x" aria-hidden="true"></i></span>A WebSocket / streaming-traffic generator</li>
+          <li class="py-3.5 text-[15px] text-base-content/50 flex gap-4 items-center"><span class="chip chip-no"><i class="ph ph-x" aria-hidden="true"></i></span>A distributed multi-region load platform</li>
+          <li class="py-3.5 text-[15px] text-base-content/50 flex gap-4 items-center"><span class="chip chip-no"><i class="ph ph-x" aria-hidden="true"></i></span>An observability or APM replacement</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INSTALL ============ -->
+  <section id="install" class="max-w-6xl mx-auto px-5 sm:px-6 pt-14 pb-16 lg:pt-16 lg:pb-20 text-center">
+    <div class="reveal">
+      <p class="eyebrow justify-center"><i class="ph ph-download-simple" aria-hidden="true"></i>Install</p>
+      <h2 class="!text-2xl sm:!text-3xl">Start investigating</h2>
+      <p class="lede mx-auto text-center">One command to install, one to run. The report lands next to you either way.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 mt-8 max-w-4xl mx-auto text-left items-start">
+        <figure class="m-0">
+          <div class="term">
+            <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">install</span></div>
+<pre><code>go install github.com/codetesla51/barrage/cmd/barrage@latest</code></pre>
+          </div>
+          <figcaption class="pt-2.5 px-1 text-xs font-mono text-base-content/40">requires Go 1.25+</figcaption>
+        </figure>
+        <figure class="m-0">
+          <div class="term">
+            <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="term-title">first run</span></div>
+<pre><code>barrage run                <span class="c"># writes report.html</span>
+barrage run -o             <span class="c"># ...and opens it</span>
+barrage run --no-report --json results.json
+barrage compare --baseline base.json \</code></pre>
+          </div>
+          <figcaption class="pt-3 px-1 text-xs font-mono text-base-content/40">point config.yaml at your targets — <a class="underline underline-offset-2 hover:text-accent" href="https://github.com/codetesla51/barrage#configuration">config guide</a></figcaption>
+        </figure>
+      </div>
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a class="btn btn-neutral btn-lg h-12 min-h-0 px-7" href="https://github.com/codetesla51/barrage#readme">
+          <i class="ph ph-book-open-text text-lg" aria-hidden="true"></i>Read the documentation
+        </a>
+        <a class="btn btn-outline btn-lg h-12 min-h-0 px-7 border-base-content/25 hover:border-base-content" href="https://github.com/codetesla51/barrage" rel="noopener">
+          <i class="ph ph-star text-lg" aria-hidden="true"></i>Star on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-base-300 bg-base-200">
+  <div class="mx-auto max-w-6xl px-5 sm:px-6 py-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+    <div>
+      <span class="font-mono font-bold">barrage<span class="cursor">_</span></span>
+      <p class="text-sm text-base-content/45 mt-2 m-0">Open-source load testing and performance investigation.</p>
+    </div>
+    <nav class="flex gap-6 text-sm" aria-label="Footer">
+      <a class="link link-hover link-neutral flex items-center gap-1.5" href="https://github.com/codetesla51/barrage">
+        <i class="ph ph-github-logo" aria-hidden="true"></i>GitHub
+      </a>
+      <a class="link link-hover link-neutral" href="https://github.com/codetesla51/barrage#readme">Documentation</a>
+      <a class="link link-hover link-neutral" href="https://github.com/codetesla51/barrage/blob/main/LICENSE">License</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://codetesla51.github.io/barrage-landing/sitemap.xml
