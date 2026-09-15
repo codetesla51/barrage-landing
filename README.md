@@ -16,3 +16,8 @@ python3 -m http.server 8890
 ## Deploy
 
 Any static host works. GitHub Pages is wired for the root of this repo.
+
+## Agents
+
+AI agents working in this repo: read [SKILL.md](SKILL.md) first — stack,
+page anatomy, install-block rules, image and SEO checklists.
