@@ -89,7 +89,7 @@
   var SIM_HEADER = [
     "$ barrage run -c config.yaml",
     "",
-    "barrage v0.3.5",
+    "barrage v0.4.0",
     "duration 15s · bucket 1s · concurrency 10 · ramp 3s",
     "rates    http 10/s · db 5/s · redis 20/s",
     ""
