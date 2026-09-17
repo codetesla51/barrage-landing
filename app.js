@@ -210,20 +210,33 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !menu.hidden) close();
     });
+    // don't carry an open mobile menu across the desktop breakpoint
+    if ("matchMedia" in window) {
+      window.matchMedia("(min-width: 1024px)").addEventListener("change", function (e) {
+        if (e.matches && !menu.hidden) close();
+      });
+    }
 
-    // scroll spy: highlight the section currently on screen
+    // scroll spy: highlight the section currently on screen.
+    // Only in-page #hash links participate — external links (Agents)
+    // are skipped, since querySelector would throw on a full URL.
     var links = document.querySelectorAll("#desk-nav .nav-link");
     if (!("IntersectionObserver" in window) || !links.length) return;
     var map = {};
+    var watched = [];
     links.forEach(function (a) {
-      var sec = document.querySelector(a.getAttribute("href"));
-      if (sec) map[sec.id] = a;
+      var href = a.getAttribute("href");
+      if (!href || href.charAt(0) !== "#") return;
+      var sec = document.getElementById(href.slice(1));
+      if (sec) { map[sec.id] = a; watched.push(a); }
     });
+    if (!watched.length) return;
     var spy = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
         if (en.isIntersecting && map[en.target.id]) {
-          links.forEach(function (a) { a.classList.remove("active"); });
+          watched.forEach(function (a) { a.classList.remove("active"); a.removeAttribute("aria-current"); });
           map[en.target.id].classList.add("active");
+          map[en.target.id].setAttribute("aria-current", "true");
         }
       });
     }, { rootMargin: "-40% 0px -55% 0px" });

@@ -40,6 +40,9 @@
 
 html { scroll-behavior: smooth; }
 
+/* anchored sections must clear the 64px fixed header when jumped to */
+main section[id] { scroll-margin-top: 5rem; }
+
 [data-theme="barrage"] body {
   font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   letter-spacing: -0.011em;

@@ -65,11 +65,11 @@
 <!-- ============ NAV ============ -->
 <header class="fixed top-0 inset-x-0 z-50 bg-base-100/85 backdrop-blur-md">
   <div class="mx-auto max-w-6xl px-5 sm:px-6">
-    <div class="h-16 flex items-center justify-between gap-3">
+    <div class="h-16 flex items-center justify-between gap-3 relative">
       <a href="#" class="font-mono font-bold text-lg tracking-tight shrink-0 leading-none" aria-label="barrage home">barrage<span class="cursor">_</span></a>
 
       <!-- center links: perfectly aligned, same control height -->
-      <nav class="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2" aria-label="Main" id="desk-nav">
+      <nav class="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2" aria-label="Main" id="desk-nav">
         <a class="nav-link" href="#how">How it works</a>
         <a class="nav-link" href="#scenarios">Scenarios</a>
         <a class="nav-link" href="#regression">CI gate</a>
@@ -86,7 +86,7 @@
             <i class="ph ph-star text-[13px] leading-none" aria-hidden="true"></i><span class="stars-n">…</span>
           </span>
         </a>
-        <button id="nav-toggle" class="btn btn-sm h-9 min-h-0 md:hidden border-base-300 bg-base-100 px-2.5" aria-expanded="false" aria-controls="mobile-menu" aria-label="Menu">
+        <button id="nav-toggle" class="btn btn-sm h-9 min-h-0 lg:hidden border-base-300 bg-base-100 px-2.5" aria-expanded="false" aria-controls="mobile-menu" aria-label="Menu">
           <i class="ph ph-list text-xl leading-none" aria-hidden="true"></i>
         </button>
       </div>
@@ -94,7 +94,7 @@
   </div>
 
   <!-- mobile menu -->
-  <nav id="mobile-menu" hidden class="md:hidden border-t border-base-300 bg-base-100/95 backdrop-blur-md px-5 py-3" aria-label="Mobile">
+  <nav id="mobile-menu" hidden class="lg:hidden border-t border-base-300 bg-base-100/95 backdrop-blur-md px-5 py-3" aria-label="Mobile">
     <a class="m-link" href="#how"><i class="ph ph-clock-countdown" aria-hidden="true"></i>How it works</a>
     <a class="m-link" href="#scenarios"><i class="ph ph-path" aria-hidden="true"></i>Scenarios</a>
     <a class="m-link" href="#regression"><i class="ph ph-git-diff" aria-hidden="true"></i>CI gate</a>
